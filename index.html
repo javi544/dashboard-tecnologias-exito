@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Tecnologías — Grupo Éxito</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#f0f2f5; color:#222; }
+header { background:linear-gradient(135deg,#1F3864,#2E75B6); color:white; padding:20px 32px; display:flex; justify-content:space-between; align-items:center; }
+header h1 { font-size:22px; }
+header span { font-size:13px; opacity:.85; }
+.tabs { display:flex; background:#1F3864; padding:0 32px; overflow-x:auto; }
+.tab { padding:12px 22px; color:rgba(255,255,255,.7); cursor:pointer; font-size:14px; border-bottom:3px solid transparent; white-space:nowrap; transition:all .2s; }
+.tab.active { color:white; border-bottom-color:#FFD700; }
+.tab:hover { color:white; }
+.filters { background:white; padding:12px 32px; display:flex; gap:12px; flex-wrap:wrap; border-bottom:1px solid #e0e0e0; align-items:center; }
+.filters select { padding:7px 12px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+.filters label { font-size:13px; color:#555; }
+.content { padding:24px 32px; }
+.panel { display:none; }
+.panel.active { display:block; }
+.stats { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+.stat { background:white; border-radius:10px; padding:16px 24px; flex:1; min-width:140px; box-shadow:0 2px 8px rgba(0,0,0,.07); border-left:4px solid #2E75B6; }
+.stat.green { border-left-color:#43a047; }
+.stat.orange { border-left-color:#fb8c00; }
+.stat.red { border-left-color:#e53935; }
+.stat.purple { border-left-color:#8e24aa; }
+.stat h3 { font-size:28px; font-weight:700; }
+.stat p { font-size:12px; color:#666; margin-top:4px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:20px; }
+.card { background:white; border-radius:10px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.07); }
+.card h3 { font-size:15px; font-weight:600; color:#1F3864; margin-bottom:16px; border-bottom:2px solid #e8f0fe; padding-bottom:8px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { background:#1F3864; color:white; padding:10px 12px; text-align:left; font-weight:600; }
+td { padding:9px 12px; border-bottom:1px solid #f0f0f0; }
+tr:hover td { background:#f5f8ff; }
+.badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-blue { background:#e3f0fb; color:#1565c0; }
+.badge-green { background:#e8f5e9; color:#2e7d32; }
+.badge-orange { background:#fff3e0; color:#e65100; }
+.badge-red { background:#fde8e8; color:#c62828; }
+.badge-purple { background:#f3e5f5; color:#6a1b9a; }
+.bar-container { margin:6px 0; }
+.bar-label { display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px; }
+.bar-bg { background:#f0f0f0; border-radius:4px; height:12px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; transition:width .5s; }
+.no-data { text-align:center; padding:40px; color:#999; }
+@media(max-width:768px) { .grid-2,.grid-3 { grid-template-columns:1fr; } .content { padding:16px; } }
+footer { text-align:center; padding:20px; color:#888; font-size:12px; border-top:1px solid #e0e0e0; margin-top:20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📊 Dashboard Tecnologías — IT en Sitio</h1>
+    <div>Grupo Éxito — Toshiba GCS Colombia</div>
+  </div>
+  <span>🕐 Actualizado: 23/08/2026 13:59</span>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('backlog',this)">📦 Backlog por Tecnología</div>
+  <div class="tab" onclick="showTab('regional',this)">🌎 Comparativa Regional</div>
+  <div class="tab" onclick="showTab('tecnicos',this)">👤 Avance Técnicos</div>
+  <div class="tab" onclick="showTab('semana',this)">📅 Tendencia Semanal</div>
+</div>
+
+<div class="filters">
+  <label>Regional:</label>
+  <select id="filtro-regional" onchange="aplicarFiltros()">
+    <option value="">Todas</option>
+    <option>CALI</option><option>MEDELLIN</option><option>COSTA</option><option>BOGOTA</option>
+  </select>
+  <label>Tecnología:</label>
+  <select id="filtro-tec" onchange="aplicarFiltros()">
+    <option value="">Todas</option>
+  </select>
+</div>
+
+<div class="content">
+
+  <!-- PANEL BACKLOG -->
+  <div class="panel active" id="panel-backlog">
+    <div class="stats">
+      <div class="stat"><h3 id="stat-total">0</h3><p>Total tickets backlog</p></div>
+      <div class="stat green"><h3 id="stat-tecs">0</h3><p>Tecnologías distintas</p></div>
+      <div class="stat orange"><h3 id="stat-mayor">-</h3><p>Mayor backlog</p></div>
+      <div class="stat purple"><h3 id="stat-regiones">4</h3><p>Regionales</p></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>📦 Backlog por Tecnología</h3>
+        <canvas id="chart-backlog-tec" height="280"></canvas>
+      </div>
+      <div class="card">
+        <h3>🌎 Distribución por Regional y Tecnología</h3>
+        <canvas id="chart-tec-reg" height="280"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📋 Detalle Backlog por Tecnología</h3>
+      <table>
+        <thead><tr><th>Tecnología</th><th>Tickets</th><th>% del total</th><th>Distribución</th></tr></thead>
+        <tbody id="tabla-backlog"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PANEL REGIONAL -->
+  <div class="panel" id="panel-regional">
+    <div class="grid-2">
+      <div class="card">
+        <h3>🌎 Tickets por Regional</h3>
+        <canvas id="chart-regional" height="280"></canvas>
+      </div>
+      <div class="card">
+        <h3>📊 % Asignación por Regional</h3>
+        <canvas id="chart-asignacion" height="280"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📋 Comparativa de Regionales</h3>
+      <table>
+        <thead><tr><th>Regional</th><th>Total Tickets</th><th>Con Técnico</th><th>Sin Técnico</th><th>% Asignación</th></tr></thead>
+        <tbody id="tabla-regional"></tbody>
+      </table>
+    </div>
+    <br>
+    <div class="card">
+      <h3>🔧 Backlog por Tecnología y Regional</h3>
+      <table>
+        <thead><tr><th>Tecnología</th><th>CALI</th><th>MEDELLIN</th><th>COSTA</th><th>BOGOTA</th><th>Total</th></tr></thead>
+        <tbody id="tabla-tec-reg"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PANEL TÉCNICOS -->
+  <div class="panel" id="panel-tecnicos">
+    <div class="card">
+      <h3>👤 Avance de Técnicos por Regional</h3>
+      <table>
+        <thead><tr><th>Regional</th><th>Técnico</th><th>Tickets asignados</th><th>Carga relativa</th></tr></thead>
+        <tbody id="tabla-tecnicos"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PANEL SEMANA -->
+  <div class="panel" id="panel-semana">
+    <div class="card">
+      <h3>📅 Tendencia de Backlog — Últimos 7 días</h3>
+      <canvas id="chart-semana" height="120"></canvas>
+    </div>
+    <br>
+    <div class="card">
+      <h3>📋 Detalle por Día</h3>
+      <table>
+        <thead><tr><th>Fecha</th><th>Total Backlog</th><th>Variación</th></tr></thead>
+        <tbody id="tabla-semana"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>🤖 Bot desarrollado por el Ing. Javier Trujillo &nbsp;|&nbsp; IT en Sitio — Grupo Éxito &nbsp;|&nbsp; Actualizado: 23/08/2026 13:59</footer>
+
+<script>
+const DATA = {"backlog_tec": [{"Tecnologia": "📱 Terminal HandHeld", "total": 120}, {"Tecnologia": "⚖️ Balanzas", "total": 108}, {"Tecnologia": "💻 Computadores", "total": 89}, {"Tecnologia": "🖥️ Puestos de Pago", "total": 73}, {"Tecnologia": "📦 Otros", "total": 54}, {"Tecnologia": "🖨️ Impresoras", "total": 50}, {"Tecnologia": "📷 Escáneres", "total": 16}, {"Tecnologia": "💾 Aplicaciones", "total": 13}, {"Tecnologia": "🏷️ Verificadores", "total": 11}, {"Tecnologia": "⏰ Control Biométrico", "total": 1}], "backlog_tec_reg": [{"Tecnologia": "⏰ Control Biométrico", "Regional": "CALI", "total": 1}, {"Tecnologia": "⚖️ Balanzas", "Regional": "BOGOTA", "total": 56}, {"Tecnologia": "⚖️ Balanzas", "Regional": "CALI", "total": 20}, {"Tecnologia": "⚖️ Balanzas", "Regional": "COSTA", "total": 13}, {"Tecnologia": "⚖️ Balanzas", "Regional": "MEDELLIN", "total": 19}, {"Tecnologia": "🏷️ Verificadores", "Regional": "BOGOTA", "total": 9}, {"Tecnologia": "🏷️ Verificadores", "Regional": "COSTA", "total": 2}, {"Tecnologia": "💻 Computadores", "Regional": "BOGOTA", "total": 32}, {"Tecnologia": "💻 Computadores", "Regional": "CALI", "total": 27}, {"Tecnologia": "💻 Computadores", "Regional": "COSTA", "total": 10}, {"Tecnologia": "💻 Computadores", "Regional": "MEDELLIN", "total": 20}, {"Tecnologia": "💾 Aplicaciones", "Regional": "BOGOTA", "total": 3}, {"Tecnologia": "💾 Aplicaciones", "Regional": "CALI", "total": 4}, {"Tecnologia": "💾 Aplicaciones", "Regional": "MEDELLIN", "total": 6}, {"Tecnologia": "📦 Otros", "Regional": "BOGOTA", "total": 15}, {"Tecnologia": "📦 Otros", "Regional": "CALI", "total": 8}, {"Tecnologia": "📦 Otros", "Regional": "COSTA", "total": 8}, {"Tecnologia": "📦 Otros", "Regional": "MEDELLIN", "total": 23}, {"Tecnologia": "📱 Terminal HandHeld", "Regional": "BOGOTA", "total": 55}, {"Tecnologia": "📱 Terminal HandHeld", "Regional": "CALI", "total": 25}, {"Tecnologia": "📱 Terminal HandHeld", "Regional": "COSTA", "total": 10}, {"Tecnologia": "📱 Terminal HandHeld", "Regional": "MEDELLIN", "total": 30}, {"Tecnologia": "📷 Escáneres", "Regional": "BOGOTA", "total": 4}, {"Tecnologia": "📷 Escáneres", "Regional": "CALI", "total": 6}, {"Tecnologia": "📷 Escáneres", "Regional": "COSTA", "total": 1}, {"Tecnologia": "📷 Escáneres", "Regional": "MEDELLIN", "total": 5}, {"Tecnologia": "🖥️ Puestos de Pago", "Regional": "BOGOTA", "total": 25}, {"Tecnologia": "🖥️ Puestos de Pago", "Regional": "CALI", "total": 19}, {"Tecnologia": "🖥️ Puestos de Pago", "Regional": "COSTA", "total": 6}, {"Tecnologia": "🖥️ Puestos de Pago", "Regional": "MEDELLIN", "total": 23}, {"Tecnologia": "🖨️ Impresoras", "Regional": "BOGOTA", "total": 18}, {"Tecnologia": "🖨️ Impresoras", "Regional": "CALI", "total": 4}, {"Tecnologia": "🖨️ Impresoras", "Regional": "COSTA", "total": 9}, {"Tecnologia": "🖨️ Impresoras", "Regional": "MEDELLIN", "total": 19}], "tecnicos": [{"Regional": "BOGOTA", "Tecnico": "Andrea Ovalle Sandoval ", "tickets": 30}, {"Regional": "BOGOTA", "Tecnico": "Bayron Smith Trujillo Rodriguez ", "tickets": 12}, {"Regional": "BOGOTA", "Tecnico": "Cristian David Castañeda Moreno ", "tickets": 3}, {"Regional": "BOGOTA", "Tecnico": "Edward Andres Erazo Garcia ", "tickets": 14}, {"Regional": "BOGOTA", "Tecnico": "Erik Gamaliel Diazgranados Veira ", "tickets": 6}, {"Regional": "BOGOTA", "Tecnico": "Gustavo Riano ", "tickets": 1}, {"Regional": "BOGOTA", "Tecnico": "Herman Varela Reyes ", "tickets": 1}, {"Regional": "BOGOTA", "Tecnico": "Hilda Mayerli Rodriguez ", "tickets": 2}, {"Regional": "BOGOTA", "Tecnico": "JOHN HARRY VELANDIA CELIS ", "tickets": 12}, {"Regional": "BOGOTA", "Tecnico": "Jenny Marcela Cortes Pacheco ", "tickets": 2}, {"Regional": "BOGOTA", "Tecnico": "Jesus Eduardo Torrecilla Tellez ", "tickets": 14}, {"Regional": "BOGOTA", "Tecnico": "Jorge Fajardo ", "tickets": 15}, {"Regional": "BOGOTA", "Tecnico": "Laura Nataly Cifuentes Martinez ", "tickets": 10}, {"Regional": "BOGOTA", "Tecnico": "Lervys David Luna Perez ", "tickets": 9}, {"Regional": "BOGOTA", "Tecnico": "Marco Aurelio Calderon Tovar ", "tickets": 8}, {"Regional": "BOGOTA", "Tecnico": "Miguel Angel Rico Velasquez ", "tickets": 3}, {"Regional": "BOGOTA", "Tecnico": "Natalia Lorena Fino Vásquez ", "tickets": 14}, {"Regional": "BOGOTA", "Tecnico": "Nicolay Daniel Cruz Sarmiento ", "tickets": 42}, {"Regional": "BOGOTA", "Tecnico": "Sergio Andres Mora Gomez ", "tickets": 3}, {"Regional": "BOGOTA", "Tecnico": "Sergio Ivan Diaz Vega ", "tickets": 6}, {"Regional": "CALI", "Tecnico": "Andrea Ovalle Sandoval ", "tickets": 16}, {"Regional": "CALI", "Tecnico": "Cristian David Castañeda Moreno ", "tickets": 3}, {"Regional": "CALI", "Tecnico": "Edward Rodríguez Real ", "tickets": 13}, {"Regional": "CALI", "Tecnico": "Edwin Cabezas Rodriguez ", "tickets": 2}, {"Regional": "CALI", "Tecnico": "JOHN HARRY VELANDIA CELIS ", "tickets": 11}, {"Regional": "CALI", "Tecnico": "Javier Alexander Trujillo Sanabria ", "tickets": 22}, {"Regional": "CALI", "Tecnico": "Jenny Marcela Cortes Pacheco ", "tickets": 1}, {"Regional": "CALI", "Tecnico": "Jose Didier Escudero Velasquez ", "tickets": 2}, {"Regional": "CALI", "Tecnico": "Julian Alberto Lopez Castañeda ", "tickets": 5}, {"Regional": "CALI", "Tecnico": "Julian Robles Perlaza ", "tickets": 14}, {"Regional": "CALI", "Tecnico": "Lervys David Luna Perez ", "tickets": 4}, {"Regional": "CALI", "Tecnico": "NEIDER JOAN HENAO GONZALEZ ", "tickets": 1}, {"Regional": "CALI", "Tecnico": "Nicolay Daniel Cruz Sarmiento ", "tickets": 2}, {"Regional": "CALI", "Tecnico": "Richard Martin Carreño Mindineros ", "tickets": 4}, {"Regional": "CALI", "Tecnico": "Sebastian Enrique Montalvo Bolivar ", "tickets": 1}, {"Regional": "COSTA", "Tecnico": "Andrea Ovalle Sandoval ", "tickets": 5}, {"Regional": "COSTA", "Tecnico": "Brandon Alberto Montano Guillen ", "tickets": 9}, {"Regional": "COSTA", "Tecnico": "Cristian David Castañeda Moreno ", "tickets": 1}, {"Regional": "COSTA", "Tecnico": "Daniel Lopez ", "tickets": 3}, {"Regional": "COSTA", "Tecnico": "JOHN HARRY VELANDIA CELIS ", "tickets": 7}, {"Regional": "COSTA", "Tecnico": "Jenny Marcela Cortes Pacheco ", "tickets": 4}, {"Regional": "COSTA", "Tecnico": "Lervys David Luna Perez ", "tickets": 6}, {"Regional": "COSTA", "Tecnico": "Nicolay Daniel Cruz Sarmiento ", "tickets": 7}, {"Regional": "COSTA", "Tecnico": "Pedro Portillo ", "tickets": 2}, {"Regional": "COSTA", "Tecnico": "Raul Del Carmen Moreno Herrera ", "tickets": 13}, {"Regional": "MEDELLIN", "Tecnico": "Alonso Aguirre Grajales ", "tickets": 20}, {"Regional": "MEDELLIN", "Tecnico": "Andrea Ovalle Sandoval ", "tickets": 3}, {"Regional": "MEDELLIN", "Tecnico": "Brahian Florez Osorno ", "tickets": 1}, {"Regional": "MEDELLIN", "Tecnico": "Cristian David Castañeda Moreno ", "tickets": 2}, {"Regional": "MEDELLIN", "Tecnico": "Edison Cardona ", "tickets": 1}, {"Regional": "MEDELLIN", "Tecnico": "JOHN HARRY VELANDIA CELIS ", "tickets": 14}, {"Regional": "MEDELLIN", "Tecnico": "Jenny Marcela Cortes Pacheco ", "tickets": 1}, {"Regional": "MEDELLIN", "Tecnico": "Jorge Eliecer Guerrero Alvarez ", "tickets": 5}, {"Regional": "MEDELLIN", "Tecnico": "Jose David Rendon Perez ", "tickets": 1}, {"Regional": "MEDELLIN", "Tecnico": "Juan Camilo Jimenez ", "tickets": 10}, {"Regional": "MEDELLIN", "Tecnico": "Juan Carlos Baldovino Cabana ", "tickets": 5}, {"Regional": "MEDELLIN", "Tecnico": "Juan David Garcia Mestra ", "tickets": 17}, {"Regional": "MEDELLIN", "Tecnico": "Julian Camilo Martinez Agudelo ", "tickets": 15}, {"Regional": "MEDELLIN", "Tecnico": "Lervys David Luna Perez ", "tickets": 13}, {"Regional": "MEDELLIN", "Tecnico": "Luis Yobanny Martinez Zarate ", "tickets": 7}, {"Regional": "MEDELLIN", "Tecnico": "Nicolay Daniel Cruz Sarmiento ", "tickets": 7}, {"Regional": "MEDELLIN", "Tecnico": "Sebastian Enrique Montalvo Bolivar ", "tickets": 7}], "comp_regional": [{"Regional": "BOGOTA", "total": 217, "con_tecnico": 207}, {"Regional": "CALI", "total": 114, "con_tecnico": 101}, {"Regional": "COSTA", "total": 59, "con_tecnico": 57}, {"Regional": "MEDELLIN", "total": 145, "con_tecnico": 129}], "semana": [{"fecha": "17/08", "total": 532}, {"fecha": "18/08", "total": 526}, {"fecha": "19/08", "total": 526}, {"fecha": "20/08", "total": 550}, {"fecha": "21/08", "total": 556}, {"fecha": "22/08", "total": 540}, {"fecha": "23/08", "total": 535}], "total_tickets": 535, "regionales": ["CALI", "MEDELLIN", "COSTA", "BOGOTA"], "tecnologias": ["⏰ Control Biométrico", "⚖️ Balanzas", "🏷️ Verificadores", "💻 Computadores", "💾 Aplicaciones", "📦 Otros", "📱 Terminal HandHeld", "📷 Escáneres", "🖥️ Puestos de Pago", "🖨️ Impresoras"], "fecha": "23/08/2026 13:59"};
+
+const COLORES = [
+  '#2E75B6','#43a047','#fb8c00','#e53935','#8e24aa',
+  '#00897b','#f4511e','#1e88e5','#6d4c41','#546e7a'
+];
+
+let tabActual = 'backlog';
+let charts = {};
+
+// Poblar filtro tecnologías
+DATA.tecnologias.forEach(t => {
+  const opt = document.createElement('option');
+  opt.value = t; opt.text = t;
+  document.getElementById('filtro-tec').appendChild(opt);
+});
+
+function showTab(tab, el) {
+  tabActual = tab;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  el.classList.add('active');
+  renderTab(tab);
+}
+
+function aplicarFiltros() { renderTab(tabActual); }
+
+function getFiltros() {
+  return {
+    regional: document.getElementById('filtro-regional').value,
+    tec: document.getElementById('filtro-tec').value
+  };
+}
+
+function filtrarDatos(rows, key_regional='Regional', key_tec='Tecnologia') {
+  const f = getFiltros();
+  return rows.filter(r => {
+    const matchReg = !f.regional || r[key_regional] === f.regional;
+    const matchTec = !f.tec || r[key_tec] === f.tec;
+    return matchReg && matchTec;
+  });
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderTab(tab) {
+  if (tab === 'backlog') renderBacklog();
+  else if (tab === 'regional') renderRegional();
+  else if (tab === 'tecnicos') renderTecnicos();
+  else if (tab === 'semana') renderSemana();
+}
+
+// ── BACKLOG ──
+function renderBacklog() {
+  const f = getFiltros();
+  let rows = DATA.backlog_tec;
+  let rowsReg = DATA.backlog_tec_reg;
+
+  if (f.regional) {
+    rowsReg = rowsReg.filter(r => r.Regional === f.regional);
+    // Recalcular totales por tec
+    const map = {};
+    rowsReg.forEach(r => { map[r.Tecnologia] = (map[r.Tecnologia]||0) + r.total; });
+    rows = Object.entries(map).map(([t,v]) => ({Tecnologia:t, total:v}))
+                  .sort((a,b) => b.total - a.total);
+  }
+  if (f.tec) { rows = rows.filter(r => r.Tecnologia === f.tec); }
+
+  const total = rows.reduce((s,r) => s+r.total, 0);
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-tecs').textContent = rows.length;
+  document.getElementById('stat-mayor').textContent = rows[0]?.Tecnologia?.replace(/^[^ ]+ /,'') || '-';
+
+  // Gráfico dona
+  destroyChart('backlog-tec');
+  charts['backlog-tec'] = new Chart(document.getElementById('chart-backlog-tec'), {
+    type: 'doughnut',
+    data: {
+      labels: rows.map(r => r.Tecnologia),
+      datasets: [{ data: rows.map(r => r.total), backgroundColor: COLORES }]
+    },
+    options: { plugins: { legend: { position:'right', labels:{font:{size:11}} } }, cutout:'60%' }
+  });
+
+  // Gráfico barras por regional
+  const regionales = ['CALI','MEDELLIN','COSTA','BOGOTA'];
+  const tecnologias = rows.map(r => r.Tecnologia);
+  let rowsRegFilt = f.tec ? DATA.backlog_tec_reg.filter(r => r.Tecnologia === f.tec) : DATA.backlog_tec_reg;
+  if (f.regional) rowsRegFilt = rowsRegFilt.filter(r => r.Regional === f.regional);
+
+  const datasets = regionales.map((reg, i) => ({
+    label: reg,
+    data: tecnologias.map(t => {
+      const found = rowsRegFilt.find(r => r.Tecnologia===t && r.Regional===reg);
+      return found ? found.total : 0;
+    }),
+    backgroundColor: COLORES[i]
+  }));
+
+  destroyChart('tec-reg');
+  charts['tec-reg'] = new Chart(document.getElementById('chart-tec-reg'), {
+    type: 'bar',
+    data: { labels: tecnologias.map(t => t.replace(/^[^ ]+ /,'')), datasets },
+    options: { plugins:{legend:{position:'top'}}, scales:{x:{stacked:true},y:{stacked:true}} }
+  });
+
+  // Tabla
+  const tbody = document.getElementById('tabla-backlog');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const pct = total > 0 ? ((r.total/total)*100).toFixed(1) : 0;
+    const color = COLORES[rows.indexOf(r) % COLORES.length];
+    tbody.innerHTML += `<tr>
+      <td>${r.Tecnologia}</td>
+      <td><b>${r.total}</b></td>
+      <td>${pct}%</td>
+      <td>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </td>
+    </tr>`;
+  });
+}
+
+// ── REGIONAL ──
+function renderRegional() {
+  const f = getFiltros();
+  let comp = DATA.comp_regional;
+  if (f.regional) comp = comp.filter(r => r.Regional === f.regional);
+
+  destroyChart('regional');
+  charts['regional'] = new Chart(document.getElementById('chart-regional'), {
+    type: 'bar',
+    data: {
+      labels: comp.map(r => r.Regional),
+      datasets: [{
+        label: 'Total tickets', data: comp.map(r => r.total),
+        backgroundColor: COLORES
+      }]
+    },
+    options: { plugins:{legend:{display:false}} }
+  });
+
+  destroyChart('asignacion');
+  charts['asignacion'] = new Chart(document.getElementById('chart-asignacion'), {
+    type: 'bar',
+    data: {
+      labels: comp.map(r => r.Regional),
+      datasets: [
+        { label: 'Con técnico', data: comp.map(r => r.con_tecnico), backgroundColor:'#43a047' },
+        { label: 'Sin técnico', data: comp.map(r => r.total - r.con_tecnico), backgroundColor:'#e53935' }
+      ]
+    },
+    options: { scales:{x:{stacked:true},y:{stacked:true}} }
+  });
+
+  const tbody = document.getElementById('tabla-regional');
+  tbody.innerHTML = '';
+  comp.forEach(r => {
+    const sin = r.total - r.con_tecnico;
+    const pct = r.total > 0 ? ((r.con_tecnico/r.total)*100).toFixed(1) : 0;
+    const badge = pct >= 80 ? 'green' : pct >= 50 ? 'orange' : 'red';
+    tbody.innerHTML += `<tr>
+      <td><b>${r.Regional}</b></td>
+      <td>${r.total}</td>
+      <td>${r.con_tecnico}</td>
+      <td>${sin}</td>
+      <td><span class="badge badge-${badge}">${pct}%</span></td>
+    </tr>`;
+  });
+
+  // Tabla cruzada tec x regional
+  let tecReg = DATA.backlog_tec_reg;
+  if (f.tec) tecReg = tecReg.filter(r => r.Tecnologia === f.tec);
+  const tecs = [...new Set(tecReg.map(r => r.Tecnologia))].sort();
+  const tbody2 = document.getElementById('tabla-tec-reg');
+  tbody2.innerHTML = '';
+  tecs.forEach(t => {
+    const get = reg => tecReg.find(r=>r.Tecnologia===t&&r.Regional===reg)?.total || 0;
+    const total = ['CALI','MEDELLIN','COSTA','BOGOTA'].reduce((s,reg)=>s+get(reg),0);
+    tbody2.innerHTML += `<tr>
+      <td>${t}</td>
+      <td>${get('CALI')}</td><td>${get('MEDELLIN')}</td>
+      <td>${get('COSTA')}</td><td>${get('BOGOTA')}</td>
+      <td><b>${total}</b></td>
+    </tr>`;
+  });
+}
+
+// ── TÉCNICOS ──
+function renderTecnicos() {
+  const f = getFiltros();
+  let rows = DATA.tecnicos;
+  if (f.regional) rows = rows.filter(r => r.Regional === f.regional);
+
+  // Max por regional para barra relativa
+  const maxPorReg = {};
+  rows.forEach(r => { maxPorReg[r.Regional] = Math.max(maxPorReg[r.Regional]||0, r.tickets); });
+
+  const tbody = document.getElementById('tabla-tecnicos');
+  tbody.innerHTML = '';
+
+  const ordenado = [...rows].sort((a,b) => b.tickets - a.tickets);
+  ordenado.forEach(r => {
+    const pct = maxPorReg[r.Regional] > 0 ? ((r.tickets/maxPorReg[r.Regional])*100).toFixed(0) : 0;
+    const color = pct >= 80 ? '#e53935' : pct >= 50 ? '#fb8c00' : '#43a047';
+    const badge = r.Regional;
+    tbody.innerHTML += `<tr>
+      <td><span class="badge badge-blue">${r.Regional}</span></td>
+      <td>${r.Tecnico}</td>
+      <td><b>${r.tickets}</b></td>
+      <td style="width:200px">
+        <div class="bar-label"><span>${pct}% de la carga máx.</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </td>
+    </tr>`;
+  });
+}
+
+// ── SEMANA ──
+function renderSemana() {
+  const rows = DATA.semana;
+  destroyChart('semana');
+  charts['semana'] = new Chart(document.getElementById('chart-semana'), {
+    type: 'line',
+    data: {
+      labels: rows.map(r => r.fecha),
+      datasets: [{
+        label: 'Backlog total',
+        data: rows.map(r => r.total),
+        borderColor: '#2E75B6',
+        backgroundColor: 'rgba(46,117,182,0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 5,
+        pointBackgroundColor: '#2E75B6'
+      }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}} }
+  });
+
+  const tbody = document.getElementById('tabla-semana');
+  tbody.innerHTML = '';
+  rows.forEach((r, i) => {
+    const prev = i > 0 ? rows[i-1].total : null;
+    const diff = prev !== null ? r.total - prev : null;
+    const varStr = diff === null ? '-' :
+      diff > 0 ? `<span style="color:#e53935">▲ ${diff}</span>` :
+      diff < 0 ? `<span style="color:#43a047">▼ ${Math.abs(diff)}</span>` :
+      `<span style="color:#888">— 0</span>`;
+    tbody.innerHTML += `<tr><td>${r.fecha}</td><td><b>${r.total}</b></td><td>${varStr}</td></tr>`;
+  });
+}
+
+// Render inicial
+renderBacklog();
+</script>
+</body>
+</html>
